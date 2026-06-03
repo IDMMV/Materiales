@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema El Tío TEC</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#0f1117;--bg2:#171b24;--bg3:#1e2330;--sidebar:#13161f;
+  --accent:#e8a020;--accent2:#f0c060;--blue:#4a90d9;--green:#3ec97e;
+  --red:#e05555;--yellow:#f0c040;--border:rgba(255,255,255,0.07);
+  --text:#e8e6df;--muted:#7a7d8a;
+  --font:'DM Sans',sans-serif;--mono:'Space Mono',monospace;
+  --radius:10px;--sidebar-w:224px;--topbar-h:58px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;display:flex;font-size:14px}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+/* LOGIN */
+#loginWrap{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:999}
+.login-card{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:48px 40px;width:360px;animation:fadeUp .4s ease}
+.login-logo{font-family:var(--mono);font-size:22px;color:var(--accent);letter-spacing:2px;margin-bottom:6px}
+.login-sub{color:var(--muted);font-size:13px;margin-bottom:32px}
+.login-card input{width:100%;padding:11px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:var(--font);font-size:14px;margin-bottom:12px;outline:none;transition:border-color .2s}
+.login-card input:focus{border-color:var(--accent)}
+.login-card input::placeholder{color:var(--muted)}
+.btn-primary{width:100%;padding:12px;background:var(--accent);color:#0f1117;border:none;border-radius:var(--radius);font-family:var(--font);font-size:14px;font-weight:600;cursor:pointer;transition:background .2s,transform .1s}
+.btn-primary:hover{background:var(--accent2)}
+.btn-primary:active{transform:scale(0.98)}
+.login-err{color:var(--red);font-size:12px;margin-top:8px;display:none}
+
+/* SIDEBAR */
+#sidebar{width:var(--sidebar-w);min-height:100vh;background:var(--sidebar);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;left:0;top:0;bottom:0;z-index:100;overflow-y:auto}
+.sb-brand{padding:22px 20px 18px;border-bottom:1px solid var(--border)}
+.sb-brand-name{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--accent);letter-spacing:1.5px}
+.sb-brand-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.sb-section{padding:18px 12px 4px}
+.sb-section-label{font-size:10px;font-weight:600;letter-spacing:1.2px;color:var(--muted);text-transform:uppercase;padding:0 8px;margin-bottom:4px}
+.sb-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;color:var(--muted);cursor:pointer;transition:background .15s,color .15s;font-size:13.5px;font-weight:400;margin-bottom:2px;user-select:none}
+.sb-item:hover{background:var(--bg3);color:var(--text)}
+.sb-item.active{background:rgba(232,160,32,0.12);color:var(--accent)}
+.sb-item i{font-size:17px;flex-shrink:0}
+.sb-item .badge{margin-left:auto;background:var(--red);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:20px}
+.sb-footer{margin-top:auto;padding:16px 12px;border-top:1px solid var(--border)}
+.sb-user{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:var(--bg3)}
+.sb-avatar{width:30px;height:30px;border-radius:50%;background:var(--accent);color:#0f1117;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
+.sb-avatar.admin-av{background:var(--blue)}
+.sb-user-name{font-size:13px;font-weight:500}
+.sb-user-role{font-size:11px;color:var(--muted)}
+.sb-logout{margin-left:auto;color:var(--muted);cursor:pointer;font-size:16px;transition:color .15s}
+.sb-logout:hover{color:var(--red)}
+
+/* LAYOUT */
+#app{display:none;width:100%}
+#mainArea{margin-left:var(--sidebar-w);min-height:100vh;display:flex;flex-direction:column;width:calc(100% - var(--sidebar-w))}
+.topbar{height:var(--topbar-h);background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 28px;gap:16px;position:sticky;top:0;z-index:50}
+.topbar-title{font-size:15px;font-weight:600;color:var(--text)}
+.topbar-date{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--muted)}
+.page{display:none;padding:28px}
+.page.active{display:block;animation:fadeUp .25s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+/* METRICS */
+.metrics-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:28px}
+.metric-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;position:relative;overflow:hidden}
+.metric-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--c,var(--accent))}
+.metric-label{font-size:11px;color:var(--muted);font-weight:500;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px}
+.metric-val{font-family:var(--mono);font-size:28px;font-weight:700;color:var(--text);line-height:1}
+.metric-icon{position:absolute;right:16px;top:50%;transform:translateY(-50%);font-size:28px;color:var(--c,var(--accent));opacity:.18}
+
+/* CHARTS */
+.charts-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px;margin-bottom:28px}
+.chart-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:20px}
+.chart-card.wide{grid-column:1/-1}
+.chart-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px}
+.chart-sub{font-size:12px;color:var(--muted);margin-bottom:16px}
+.chart-wrap{position:relative;height:200px}
+.chart-wrap.tall{height:240px}
+
+/* TABLE */
+.table-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:18px}
+.table-head{display:flex;align-items:center;padding:14px 20px;border-bottom:1px solid var(--border);gap:10px;flex-wrap:wrap}
+.table-head-title{font-size:13px;font-weight:600}
+.btn-sm{padding:6px 14px;background:var(--accent);color:#0f1117;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);transition:background .15s}
+.btn-sm:hover{background:var(--accent2)}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;padding:10px 16px;font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;background:var(--bg3);border-bottom:1px solid var(--border)}
+td{padding:10px 16px;font-size:13px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:top}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,0.02)}
+
+/* PILLS */
+.pill{display:inline-block;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:600}
+.pill-blue{background:rgba(74,144,217,.18);color:#6db3f2}
+.pill-orange{background:rgba(232,160,32,.18);color:var(--accent2)}
+.pill-green{background:rgba(62,201,126,.18);color:#5ee09a}
+.pill-yellow{background:rgba(240,192,64,.18);color:#f0c040}
+.pill-red{background:rgba(224,85,85,.18);color:#f07070}
+.pill-purple{background:rgba(160,100,220,.18);color:#c080f0}
+.pill-gray{background:rgba(122,125,138,.18);color:#aaa}
+
+/* FORMS */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px}
+.form-group{display:flex;flex-direction:column;gap:6px}
+.form-group label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.form-group input,.form-group select{padding:10px 13px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:var(--font);font-size:13px;outline:none;transition:border-color .2s;width:100%}
+.form-group input:focus,.form-group select:focus{border-color:var(--accent)}
+.form-group input::placeholder{color:var(--muted)}
+.form-group select option{background:var(--bg3)}
+.form-group input[readonly]{opacity:.6;cursor:default}
+.search-wrap{position:relative}
+.search-results{position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);z-index:200;max-height:160px;overflow-y:auto}
+.search-item{padding:9px 13px;font-size:13px;cursor:pointer;display:flex;justify-content:space-between;gap:10px;transition:background .1s}
+.search-item:hover{background:rgba(232,160,32,.1)}
+.search-item span{color:var(--muted);font-size:12px;font-family:var(--mono)}
+
+/* BUTTONS */
+.btn-danger{background:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;color:var(--red);cursor:pointer;font-size:12px;font-family:var(--font);transition:background .15s}
+.btn-danger:hover{background:rgba(224,85,85,.12)}
+.btn-edit{background:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;color:var(--blue);cursor:pointer;font-size:12px;font-family:var(--font);transition:background .15s}
+.btn-edit:hover{background:rgba(74,144,217,.12)}
+.btn-check{background:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;color:var(--green);cursor:pointer;font-size:12px;font-family:var(--font);transition:background .15s}
+.btn-check:hover{background:rgba(62,201,126,.12)}
+.btn-warn{background:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;color:var(--yellow);cursor:pointer;font-size:12px;font-family:var(--font);transition:background .15s}
+.btn-warn:hover{background:rgba(240,192,64,.12)}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;z-index:500;backdrop-filter:blur(3px)}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:32px;width:460px;max-width:92vw;animation:fadeUp .25s ease;max-height:90vh;overflow-y:auto}
+.modal-title{font-size:16px;font-weight:600;margin-bottom:20px;display:flex;align-items:center;gap:10px}
+.modal-actions{display:flex;gap:10px;margin-top:22px;justify-content:flex-end}
+.btn-ghost{padding:9px 18px;background:none;border:1px solid var(--border);border-radius:var(--radius);color:var(--muted);cursor:pointer;font-family:var(--font);font-size:13px;transition:border-color .15s}
+.btn-ghost:hover{border-color:var(--text);color:var(--text)}
+.btn-confirm{padding:9px 18px;background:var(--accent);color:#0f1117;border:none;border-radius:var(--radius);font-family:var(--font);font-size:13px;font-weight:600;cursor:pointer;transition:background .15s}
+.btn-confirm:hover{background:var(--accent2)}
+.btn-confirm-red{padding:9px 18px;background:var(--red);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:13px;font-weight:600;cursor:pointer;opacity:.9;transition:opacity .15s}
+.btn-confirm-red:hover{opacity:1}
+
+/* SOLICITUD CARD */
+.sol-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;margin-bottom:10px;transition:border-color .15s}
+.sol-card:hover{border-color:rgba(255,255,255,0.14)}
+.sol-card-top{display:flex;align-items:flex-start;gap:14px}
+.sol-icon{width:38px;height:38px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.sol-body{flex:1;min-width:0}
+.sol-desc{font-size:13px;font-weight:500;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sol-mat{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.sol-estado{flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.sol-timeline{margin-top:12px;padding-top:10px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:5px}
+.sol-tl-item{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted)}
+.sol-tl-dot{width:6px;height:6px;border-radius:50%;background:var(--muted);flex-shrink:0}
+.sol-tl-dot.green{background:var(--green)}
+.sol-tl-dot.yellow{background:var(--yellow)}
+.sol-tl-dot.blue{background:var(--blue)}
+.sol-actions{margin-top:10px;display:flex;gap:8px}
+
+/* TIMELINE en tabla */
+.tl-small{font-size:11px;color:var(--muted);line-height:1.6;margin-top:3px}
+.tl-small span{color:var(--text)}
+
+/* INFO SECTION */
+.info-row{display:flex;gap:6px;align-items:baseline;font-size:12px;margin-bottom:4px}
+.info-row .lbl{color:var(--muted);font-size:11px;min-width:90px}
+.info-row .val{color:var(--text)}
+
+/* EMPTY */
+.empty-state{text-align:center;padding:48px 20px;color:var(--muted)}
+.empty-state i{font-size:40px;opacity:.3;margin-bottom:12px;display:block}
+.empty-state p{font-size:13px}
+
+/* EDIT FLAG */
+.edit-once-badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;padding:2px 8px;border-radius:20px;background:rgba(74,144,217,.15);color:#6db3f2;font-weight:600}
+.edit-once-badge.used{background:rgba(122,125,138,.15);color:var(--muted)}
+
+/* TOAST */
+#toast{position:fixed;bottom:28px;right:28px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 20px;font-size:13px;z-index:9999;opacity:0;transform:translateY(10px);transition:opacity .3s,transform .3s;pointer-events:none;display:flex;align-items:center;gap:10px;max-width:340px}
+#toast.show{opacity:1;transform:translateY(0)}
+#toast i{font-size:16px;flex-shrink:0}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginWrap">
+  <div class="login-card">
+    <div class="login-logo">EL TÍO TEC</div>
+    <div class="login-sub">Sistema de gestión de materiales</div>
+    <input type="text" id="loginUser" placeholder="Usuario" autocomplete="off">
+    <input type="password" id="loginPass" placeholder="Contraseña" onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="btn-primary" onclick="doLogin()">Ingresar al sistema</button>
+    <div class="login-err" id="loginErr">Usuario o contraseña incorrectos</div>
+    <div style="margin-top:16px;font-size:11px;color:var(--muted)">Demo Admin: <b style="color:var(--text)">admin / 1234</b></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <nav id="sidebar">
+    <div class="sb-brand">
+      <div class="sb-brand-name">EL TÍO TEC</div>
+      <div class="sb-brand-sub">Gestión de materiales</div>
+    </div>
+
+    <!-- ADMIN nav -->
+    <div id="navAdmin">
+      <div class="sb-section">
+        <div class="sb-section-label">Principal</div>
+        <div class="sb-item active" onclick="goTo('dashboard',this)" id="sbDash"><i class="ti ti-layout-dashboard"></i> Dashboard</div>
+        <div class="sb-item" onclick="goTo('solicitudes-admin',this)">
+          <i class="ti ti-checklist"></i> Solicitudes
+          <span class="badge" id="badgePend" style="display:none">0</span>
+        </div>
+        <div class="sb-item" onclick="goTo('nueva-solicitud-admin',this)"><i class="ti ti-file-plus"></i> Nueva solicitud</div>
+      </div>
+      <div class="sb-section">
+        <div class="sb-section-label">Gestión</div>
+        <div class="sb-item" onclick="goTo('inventario',this)"><i class="ti ti-box"></i> Inventario</div>
+        <div class="sb-item" onclick="goTo('historial',this)"><i class="ti ti-history"></i> Historial</div>
+        <div class="sb-item" onclick="goTo('usuarios',this)"><i class="ti ti-users"></i> Usuarios</div>
+      </div>
+    </div>
+
+    <!-- OPERADOR nav -->
+    <div id="navOperador" style="display:none">
+      <div class="sb-section">
+        <div class="sb-section-label">Principal</div>
+        <div class="sb-item active" onclick="goTo('mis-solicitudes',this)" id="sbMisSol"><i class="ti ti-clipboard-list"></i> Mis solicitudes</div>
+        <div class="sb-item" onclick="goTo('nueva-solicitud',this)"><i class="ti ti-file-plus"></i> Nueva solicitud</div>
+      </div>
+    </div>
+
+    <div class="sb-footer">
+      <div class="sb-user">
+        <div class="sb-avatar" id="sbAvatar">?</div>
+        <div>
+          <div class="sb-user-name" id="sbName">—</div>
+          <div class="sb-user-role" id="sbRole">—</div>
+        </div>
+        <i class="ti ti-logout sb-logout" onclick="doLogout()" title="Cerrar sesión"></i>
+      </div>
+    </div>
+  </nav>
+
+  <div id="mainArea">
+    <div class="topbar">
+      <div class="topbar-title" id="topTitle">Dashboard</div>
+      <div class="topbar-date" id="topDate"></div>
+    </div>
+
+    <!-- ADMIN: DASHBOARD -->
+    <div class="page active" id="page-dashboard">
+      <div class="metrics-grid">
+        <div class="metric-card" style="--c:var(--accent)"><div class="metric-label">Total solicitudes</div><div class="metric-val" id="mTotal">0</div><i class="ti ti-list metric-icon"></i></div>
+        <div class="metric-card" style="--c:var(--yellow)"><div class="metric-label">Pendientes</div><div class="metric-val" id="mPend">0</div><i class="ti ti-clock metric-icon"></i></div>
+        <div class="metric-card" style="--c:var(--green)"><div class="metric-label">Atendidas</div><div class="metric-val" id="mAten">0</div><i class="ti ti-circle-check metric-icon"></i></div>
+        <div class="metric-card" style="--c:var(--blue)"><div class="metric-label">Usuarios activos</div><div class="metric-val" id="mUsersD">0</div><i class="ti ti-users metric-icon"></i></div>
+      </div>
+      <div class="charts-grid">
+        <div class="chart-card"><div class="chart-title">Solicitudes por usuario</div><div class="chart-sub">Total registrados</div><div class="chart-wrap"><canvas id="chartUsuarios"></canvas></div></div>
+        <div class="chart-card"><div class="chart-title">Tipo de operación</div><div class="chart-sub">Pedidos vs Devoluciones</div><div class="chart-wrap"><canvas id="chartTipos"></canvas></div></div>
+        <div class="chart-card"><div class="chart-title">Estado de solicitudes</div><div class="chart-sub">Pendientes vs Atendidas</div><div class="chart-wrap"><canvas id="chartEstados"></canvas></div></div>
+        <div class="chart-card wide"><div class="chart-title">Actividad reciente — cantidades</div><div class="chart-sub">Últimas 8 solicitudes</div><div class="chart-wrap tall"><canvas id="chartTendencia"></canvas></div></div>
+      </div>
+    </div>
+
+    <!-- ADMIN: TODAS LAS SOLICITUDES -->
+    <div class="page" id="page-solicitudes-admin">
+      <div class="table-card">
+        <div class="table-head">
+          <i class="ti ti-checklist" style="color:var(--accent);font-size:18px"></i>
+          <span class="table-head-title">Todas las solicitudes</span>
+          <select id="filtroEstado" onchange="renderSolicitudesAdmin()" style="margin-left:auto;padding:6px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;font-family:var(--font);outline:none">
+            <option value="">Todos los estados</option>
+            <option value="Pendiente">Pendiente</option>
+            <option value="Atendido">Atendido</option>
+          </select>
+        </div>
+        <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th>#</th><th>Usuario</th><th>Tipo</th><th>Matrícula</th><th>Descripción</th><th>Cant.</th><th>Estado</th><th>Fechas</th><th>Acciones</th></tr></thead>
+          <tbody id="tbodySolAdmin"></tbody>
+        </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ADMIN: NUEVA SOLICITUD (acceso total igual que operador) -->
+    <div class="page" id="page-nueva-solicitud-admin">
+      <div class="table-card">
+        <div class="table-head"><i class="ti ti-file-plus" style="color:var(--accent);font-size:18px"></i><span class="table-head-title">Registrar solicitud (como administrador)</span></div>
+        <div style="padding:20px">
+          <div class="form-grid">
+            <div class="form-group"><label>Tipo de movimiento</label><select id="tipoMovAdmin"><option>Pedido</option><option>Devolución</option></select></div>
+            <div class="form-group"><label>Cantidad</label><input type="number" id="cantAdmin" placeholder="0" min="1"></div>
+            <div class="form-group" style="grid-column:1/-1"><label>Buscar material</label>
+              <div class="search-wrap">
+                <input type="text" id="buscAdmin" placeholder="Escribe matrícula o descripción..." oninput="filtrarAdmin()" autocomplete="off">
+                <div class="search-results" id="searchResultsAdmin" style="display:none"></div>
+              </div>
+            </div>
+            <div class="form-group"><label>Matrícula</label><input type="text" id="matAdmin" readonly placeholder="Auto"></div>
+            <div class="form-group"><label>Descripción</label><input type="text" id="descAdmin" readonly placeholder="Auto"></div>
+          </div>
+          <button class="btn-primary" style="width:auto;padding:11px 28px" onclick="guardarAdmin()">
+            <i class="ti ti-send" style="font-size:14px;vertical-align:-2px"></i> Enviar solicitud
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ADMIN: INVENTARIO -->
+    <div class="page" id="page-inventario">
+      <div class="table-card">
+        <div class="table-head"><i class="ti ti-box" style="color:var(--accent);font-size:18px"></i><span class="table-head-title">Añadir al catálogo</span></div>
+        <div style="padding:20px">
+          <div class="form-grid">
+            <div class="form-group"><label>Matrícula</label><input type="text" id="newMat" placeholder="Ej. 3004042"></div>
+            <div class="form-group"><label>Descripción</label><input type="text" id="newDesc" placeholder="Nombre del material"></div>
+          </div>
+          <button class="btn-primary" style="width:auto;padding:11px 28px" onclick="addInv()"><i class="ti ti-plus" style="font-size:14px;vertical-align:-2px"></i> Añadir ítem</button>
+        </div>
+      </div>
+      <div class="table-card">
+        <div class="table-head"><i class="ti ti-list" style="color:var(--accent);font-size:18px"></i><span class="table-head-title">Catálogo de materiales</span></div>
+        <table><thead><tr><th>Matrícula</th><th>Descripción</th><th>Acciones</th></tr></thead><tbody id="tbodyInv"></tbody></table>
+      </div>
+    </div>
+
+    <!-- ADMIN: HISTORIAL -->
+    <div class="page" id="page-historial">
+      <div class="table-card">
+        <div class="table-head"><i class="ti ti-history" style="color:var(--accent);font-size:18px"></i><span class="table-head-title">Historial completo</span></div>
+        <div style="overflow-x:auto">
+        <table><thead><tr><th>#</th><th>Usuario</th><th>Tipo</th><th>Matrícula</th><th>Descripción</th><th>Cant.</th><th>Estado</th><th>Línea de tiempo</th></tr></thead><tbody id="tbodyHist"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ADMIN: USUARIOS -->
+    <div class="page" id="page-usuarios">
+      <div class="table-card">
+        <div class="table-head"><i class="ti ti-user-plus" style="color:var(--accent);font-size:18px"></i><span class="table-head-title">Crear nuevo usuario</span></div>
+        <div style="padding:20px">
+          <div class="form-grid">
+            <div class="form-group"><label>Nombre de usuario</label><input type="text" id="nuUser" placeholder="Ej. jperez"></div>
+            <div class="form-group"><label>Contraseña</label><input type="password" id="nuPass" placeholder="Mínimo 4 caracteres"></div>
+            <div class="form-group"><label>Rol</label><select id="nuRol"><option value="operador">Operador</option><option value="admin">Administrador</option></select></div>
+            <div class="form-group"><label>Nombre completo</label><input type="text" id="nuNombre" placeholder="Ej. Juan Pérez"></div>
+          </div>
+          <button class="btn-primary" style="width:auto;padding:11px 28px" onclick="crearUsuario()"><i class="ti ti-user-plus" style="font-size:14px;vertical-align:-2px"></i> Crear usuario</button>
+        </div>
+      </div>
+      <div class="table-card">
+        <div class="table-head"><i class="ti ti-users" style="color:var(--accent);font-size:18px"></i><span class="table-head-title">Usuarios del sistema</span></div>
+        <table><thead><tr><th>Usuario</th><th>Nombre</th><th>Rol</th><th>Solicitudes</th><th>Registro</th><th>Acciones</th></tr></thead><tbody id="tbodyUsuarios"></tbody></table>
+      </div>
+    </div>
+
+    <!-- OPERADOR: MIS SOLICITUDES -->
+    <div class="page" id="page-mis-solicitudes">
+      <div class="metrics-grid" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr))">
+        <div class="metric-card" style="--c:var(--accent)"><div class="metric-label">Mis solicitudes</div><div class="metric-val" id="opTotal">0</div><i class="ti ti-list metric-icon"></i></div>
+        <div class="metric-card" style="--c:var(--yellow)"><div class="metric-label">Pendientes</div><div class="metric-val" id="opPend">0</div><i class="ti ti-clock metric-icon"></i></div>
+        <div class="metric-card" style="--c:var(--green)"><div class="metric-label">Atendidas</div><div class="metric-val" id="opAten">0</div><i class="ti ti-circle-check metric-icon"></i></div>
+      </div>
+      <div class="table-card">
+        <div class="table-head"><i class="ti ti-clipboard-list" style="color:var(--accent);font-size:18px"></i><span class="table-head-title">Resumen de mis solicitudes</span></div>
+        <div id="listaMisSol" style="padding:8px 12px"></div>
+      </div>
+    </div>
+
+    <!-- OPERADOR: NUEVA SOLICITUD -->
+    <div class="page" id="page-nueva-solicitud">
+      <div class="table-card">
+        <div class="table-head"><i class="ti ti-file-plus" style="color:var(--accent);font-size:18px"></i><span class="table-head-title">Registrar solicitud</span></div>
+        <div style="padding:20px">
+          <div class="form-grid">
+            <div class="form-group"><label>Tipo de movimiento</label><select id="tipoMov"><option>Pedido</option><option>Devolución</option></select></div>
+            <div class="form-group"><label>Cantidad</label><input type="number" id="cant" placeholder="0" min="1"></div>
+            <div class="form-group" style="grid-column:1/-1"><label>Buscar material</label>
+              <div class="search-wrap">
+                <input type="text" id="busc" placeholder="Escribe matrícula o descripción..." oninput="filtrar()" autocomplete="off">
+                <div class="search-results" id="searchResults" style="display:none"></div>
+              </div>
+            </div>
+            <div class="form-group"><label>Matrícula</label><input type="text" id="mat" readonly placeholder="Auto"></div>
+            <div class="form-group"><label>Descripción</label><input type="text" id="desc" readonly placeholder="Auto"></div>
+          </div>
+          <button class="btn-primary" style="width:auto;padding:11px 28px" onclick="guardar()"><i class="ti ti-send" style="font-size:14px;vertical-align:-2px"></i> Enviar solicitud</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODAL: ATENDER -->
+<div class="modal-overlay" id="modalAtender" style="display:none">
+  <div class="modal">
+    <div class="modal-title"><i class="ti ti-circle-check" style="color:var(--green)"></i> Confirmar atención</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:12px">¿Marcar esta solicitud como <b style="color:var(--green)">Atendida</b>?</p>
+    <div id="modalDetalle" style="background:var(--bg3);border-radius:8px;padding:14px;font-size:13px"></div>
+    <div class="modal-actions"><button class="btn-ghost" onclick="closeModal('modalAtender')">Cancelar</button><button class="btn-confirm" onclick="confirmarAtender()"><i class="ti ti-check"></i> Confirmar</button></div>
+  </div>
+</div>
+
+<!-- MODAL: EDITAR SOLICITUD -->
+<div class="modal-overlay" id="modalEditar" style="display:none">
+  <div class="modal">
+    <div class="modal-title"><i class="ti ti-edit" style="color:var(--blue)"></i> Modificar solicitud</div>
+    <p style="font-size:12px;color:var(--yellow);margin-bottom:16px;display:flex;align-items:center;gap:6px"><i class="ti ti-alert-triangle"></i> Solo se permite <b>una modificación</b> por solicitud.</p>
+    <div class="form-grid" style="margin-bottom:0">
+      <div class="form-group"><label>Tipo</label><select id="editTipo"><option>Pedido</option><option>Devolución</option></select></div>
+      <div class="form-group"><label>Cantidad</label><input type="number" id="editCant" min="1"></div>
+      <div class="form-group" style="grid-column:1/-1"><label>Buscar material</label>
+        <div class="search-wrap">
+          <input type="text" id="editBusc" placeholder="Escribe para buscar..." oninput="filtrarEdit()" autocomplete="off">
+          <div class="search-results" id="searchResultsEdit" style="display:none"></div>
+        </div>
+      </div>
+      <div class="form-group"><label>Matrícula</label><input type="text" id="editMat" readonly></div>
+      <div class="form-group"><label>Descripción</label><input type="text" id="editDesc" readonly></div>
+    </div>
+    <div class="modal-actions"><button class="btn-ghost" onclick="closeModal('modalEditar')">Cancelar</button><button class="btn-confirm" onclick="confirmarEditar()"><i class="ti ti-device-floppy"></i> Guardar cambios</button></div>
+  </div>
+</div>
+
+<!-- MODAL: RESETEAR CONTRASEÑA -->
+<div class="modal-overlay" id="modalReset" style="display:none">
+  <div class="modal">
+    <div class="modal-title"><i class="ti ti-lock-open" style="color:var(--yellow)"></i> Resetear contraseña</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Nueva contraseña para <b id="resetUserLabel" style="color:var(--text)"></b></p>
+    <div class="form-group" style="margin-bottom:12px"><label>Nueva contraseña</label><input type="password" id="resetNewPass" placeholder="Mínimo 4 caracteres"></div>
+    <div class="form-group"><label>Confirmar contraseña</label><input type="password" id="resetConfPass" placeholder="Repite la contraseña"></div>
+    <div class="modal-actions"><button class="btn-ghost" onclick="closeModal('modalReset')">Cancelar</button><button class="btn-confirm" onclick="confirmarReset()"><i class="ti ti-check"></i> Confirmar reset</button></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"><i class="ti ti-check"></i><span id="toastMsg"></span></div>
+
+<script>
+// ═══════════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════════
+function now(){ return new Date().toLocaleString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); }
+
+let DB = {
+  users:{
+    admin:   {pass:'1234',   rol:'admin',    nombre:'Administrador', creado: now()},
+    operador:{pass:'0000',   rol:'operador', nombre:'Operador Demo',  creado: now()},
+  },
+  movimientos:[],
+  catalogo:[
+    {Matricula:'3004042',Descripcion:'ABRAZADERA 160-190MM'},
+    {Matricula:'3004043',Descripcion:'ABRAZADERA 90-110MM'},
+    {Matricula:'3004044',Descripcion:'TORNILLO M8x20'},
+    {Matricula:'3004045',Descripcion:'TUERCA M8'},
+    {Matricula:'3004046',Descripcion:'CODO 90° PVC 1"'},
+  ],
+  nextId:1,
+};
+// {id, usuario, tipo, mat, desc, cant, estado, fechaRegistro, fechaModificacion, fechaAtencion, modificado:bool}
+
+let SESSION={user:'',rol:''};
+let charts={};
+let pendingId=null;
+let editingId=null;
+let resetUser=null;
+
+// ═══════════════════════════════════════════
+// LOGIN / LOGOUT
+// ═══════════════════════════════════════════
+function doLogin(){
+  const u=document.getElementById('loginUser').value.trim();
+  const p=document.getElementById('loginPass').value;
+  const ud=DB.users[u];
+  if(ud&&ud.pass===p){
+    SESSION={user:u,rol:ud.rol};
+    document.getElementById('sbName').textContent=ud.nombre||u;
+    document.getElementById('sbRole').textContent=ud.rol==='admin'?'Administrador':'Operador';
+    document.getElementById('sbAvatar').textContent=(ud.nombre||u).charAt(0).toUpperCase();
+    document.getElementById('sbAvatar').className='sb-avatar'+(ud.rol==='admin'?' admin-av':'');
+    document.getElementById('loginErr').style.display='none';
+    document.getElementById('loginWrap').style.display='none';
+    document.getElementById('app').style.display='flex';
+    document.getElementById('topDate').textContent=new Date().toLocaleDateString('es-PE',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+    setupNav();
+  }else{
+    document.getElementById('loginErr').style.display='block';
+  }
+}
+function doLogout(){
+  SESSION={user:'',rol:''};
+  document.getElementById('loginUser').value='';
+  document.getElementById('loginPass').value='';
+  document.getElementById('app').style.display='none';
+  document.getElementById('loginWrap').style.display='flex';
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+}
+
+// ═══════════════════════════════════════════
+// NAV SETUP
+// ═══════════════════════════════════════════
+function setupNav(){
+  const isAdmin=SESSION.rol==='admin';
+  document.getElementById('navAdmin').style.display=isAdmin?'':'none';
+  document.getElementById('navOperador').style.display=isAdmin?'none':'';
+  document.querySelectorAll('.sb-item').forEach(i=>i.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  if(isAdmin){
+    document.getElementById('sbDash').classList.add('active');
+    document.getElementById('page-dashboard').classList.add('active');
+    document.getElementById('topTitle').textContent='Dashboard';
+    renderDashboard();
+  }else{
+    document.getElementById('sbMisSol').classList.add('active');
+    document.getElementById('page-mis-solicitudes').classList.add('active');
+    document.getElementById('topTitle').textContent='Mis solicitudes';
+    renderMisSolicitudes();
+  }
+  renderBadgePend();
+  renderInv();
+}
+
+const pageTitles={'dashboard':'Dashboard','solicitudes-admin':'Solicitudes','nueva-solicitud-admin':'Nueva solicitud','inventario':'Inventario','historial':'Historial','usuarios':'Gestión de usuarios','mis-solicitudes':'Mis solicitudes','nueva-solicitud':'Nueva solicitud'};
+function goTo(pageId,el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.sb-item').forEach(i=>i.classList.remove('active'));
+  document.getElementById('page-'+pageId).classList.add('active');
+  el.classList.add('active');
+  document.getElementById('topTitle').textContent=pageTitles[pageId]||pageId;
+  const map={'dashboard':renderDashboard,'solicitudes-admin':renderSolicitudesAdmin,'historial':renderHistorial,'mis-solicitudes':renderMisSolicitudes,'inventario':renderInv,'usuarios':renderUsuarios};
+  if(map[pageId]) map[pageId]();
+}
+
+// ═══════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════
+let toastTimer;
+function showToast(msg,icon='ti-check',color='var(--green)'){
+  const t=document.getElementById('toast');
+  const ic=t.querySelector('i');
+  ic.className='ti '+icon; ic.style.color=color;
+  document.getElementById('toastMsg').textContent=msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+// ═══════════════════════════════════════════
+// BÚSQUEDA (operador)
+// ═══════════════════════════════════════════
+function filtrar(){
+  const q=document.getElementById('busc').value.toLowerCase();
+  const box=document.getElementById('searchResults');
+  if(!q){box.style.display='none';return;}
+  const res=DB.catalogo.filter(i=>i.Matricula.toLowerCase().includes(q)||i.Descripcion.toLowerCase().includes(q));
+  if(!res.length){box.style.display='none';return;}
+  box.innerHTML=res.map(i=>`<div class="search-item" onclick="selectItem('${i.Matricula}','${esc(i.Descripcion)}')"><div>${i.Descripcion}</div><span>${i.Matricula}</span></div>`).join('');
+  box.style.display='block';
+}
+function selectItem(mat,desc){
+  document.getElementById('mat').value=mat;
+  document.getElementById('desc').value=desc;
+  document.getElementById('busc').value=desc;
+  document.getElementById('searchResults').style.display='none';
+}
+
+// BÚSQUEDA (admin nueva solicitud)
+function filtrarAdmin(){
+  const q=document.getElementById('buscAdmin').value.toLowerCase();
+  const box=document.getElementById('searchResultsAdmin');
+  if(!q){box.style.display='none';return;}
+  const res=DB.catalogo.filter(i=>i.Matricula.toLowerCase().includes(q)||i.Descripcion.toLowerCase().includes(q));
+  if(!res.length){box.style.display='none';return;}
+  box.innerHTML=res.map(i=>`<div class="search-item" onclick="selectItemAdmin('${i.Matricula}','${esc(i.Descripcion)}')"><div>${i.Descripcion}</div><span>${i.Matricula}</span></div>`).join('');
+  box.style.display='block';
+}
+function selectItemAdmin(mat,desc){
+  document.getElementById('matAdmin').value=mat;
+  document.getElementById('descAdmin').value=desc;
+  document.getElementById('buscAdmin').value=desc;
+  document.getElementById('searchResultsAdmin').style.display='none';
+}
+
+// BÚSQUEDA (modal editar)
+function filtrarEdit(){
+  const q=document.getElementById('editBusc').value.toLowerCase();
+  const box=document.getElementById('searchResultsEdit');
+  if(!q){box.style.display='none';return;}
+  const res=DB.catalogo.filter(i=>i.Matricula.toLowerCase().includes(q)||i.Descripcion.toLowerCase().includes(q));
+  if(!res.length){box.style.display='none';return;}
+  box.innerHTML=res.map(i=>`<div class="search-item" onclick="selectItemEdit('${i.Matricula}','${esc(i.Descripcion)}')"><div>${i.Descripcion}</div><span>${i.Matricula}</span></div>`).join('');
+  box.style.display='block';
+}
+function selectItemEdit(mat,desc){
+  document.getElementById('editMat').value=mat;
+  document.getElementById('editDesc').value=desc;
+  document.getElementById('editBusc').value=desc;
+  document.getElementById('searchResultsEdit').style.display='none';
+}
+
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.search-wrap')){
+    ['searchResults','searchResultsAdmin','searchResultsEdit'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='none'; });
+  }
+});
+
+// ═══════════════════════════════════════════
+// GUARDAR SOLICITUD (operador)
+// ═══════════════════════════════════════════
+function guardar(){
+  const mat=document.getElementById('mat').value.trim();
+  const desc=document.getElementById('desc').value.trim();
+  const cant=parseInt(document.getElementById('cant').value);
+  const tipo=document.getElementById('tipoMov').value;
+  if(!mat||!desc||!cant||cant<1){showToast('Completa todos los campos','ti-alert-circle','var(--red)');return;}
+  DB.movimientos.push({id:DB.nextId++,usuario:SESSION.user,tipo,mat,desc,cant,estado:'Pendiente',fechaRegistro:now(),fechaModificacion:null,fechaAtencion:null,modificado:false});
+  clearForm(['mat','desc','busc','cant']);
+  showToast('Solicitud enviada correctamente','ti-send','var(--blue)');
+  renderBadgePend();
+  renderMisSolicitudes();
+}
+
+// GUARDAR SOLICITUD (admin)
+function guardarAdmin(){
+  const mat=document.getElementById('matAdmin').value.trim();
+  const desc=document.getElementById('descAdmin').value.trim();
+  const cant=parseInt(document.getElementById('cantAdmin').value);
+  const tipo=document.getElementById('tipoMovAdmin').value;
+  if(!mat||!desc||!cant||cant<1){showToast('Completa todos los campos','ti-alert-circle','var(--red)');return;}
+  DB.movimientos.push({id:DB.nextId++,usuario:SESSION.user,tipo,mat,desc,cant,estado:'Pendiente',fechaRegistro:now(),fechaModificacion:null,fechaAtencion:null,modificado:false});
+  clearForm(['matAdmin','descAdmin','buscAdmin','cantAdmin']);
+  showToast('Solicitud registrada','ti-send','var(--blue)');
+  renderBadgePend();
+  renderDashboard();
+}
+
+function clearForm(ids){ ids.forEach(id=>{const el=document.getElementById(id);if(el)el.value='';}); }
+
+// ═══════════════════════════════════════════
+// MODAL ATENDER
+// ═══════════════════════════════════════════
+function abrirModalAtender(id){
+  pendingId=id;
+  const m=DB.movimientos.find(x=>x.id===id);
+  document.getElementById('modalDetalle').innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="info-row" style="flex-direction:column"><span class="lbl">USUARIO</span><span class="val">${DB.users[m.usuario]?.nombre||m.usuario}</span></div>
+      <div class="info-row" style="flex-direction:column"><span class="lbl">TIPO</span><span class="pill ${m.tipo==='Pedido'?'pill-blue':'pill-orange'}">${m.tipo}</span></div>
+      <div class="info-row" style="flex-direction:column"><span class="lbl">MATRÍCULA</span><span class="val" style="font-family:var(--mono);font-size:12px">${m.mat}</span></div>
+      <div class="info-row" style="flex-direction:column"><span class="lbl">CANTIDAD</span><span class="val">${m.cant}</span></div>
+      <div class="info-row" style="flex-direction:column;grid-column:1/-1"><span class="lbl">DESCRIPCIÓN</span><span class="val">${m.desc}</span></div>
+      <div class="info-row" style="flex-direction:column;grid-column:1/-1"><span class="lbl">REGISTRADO</span><span class="val" style="font-size:12px">${m.fechaRegistro}</span></div>
+    </div>`;
+  document.getElementById('modalAtender').style.display='flex';
+}
+function confirmarAtender(){
+  const m=DB.movimientos.find(x=>x.id===pendingId);
+  if(m){m.estado='Atendido';m.fechaAtencion=now();}
+  closeModal('modalAtender');
+  renderSolicitudesAdmin();
+  renderBadgePend();
+  showToast('Solicitud marcada como atendida','ti-circle-check','var(--green)');
+}
+
+// ═══════════════════════════════════════════
+// MODAL EDITAR (operador — máx 1 vez, solo Pendiente)
+// ═══════════════════════════════════════════
+function abrirModalEditar(id){
+  const m=DB.movimientos.find(x=>x.id===id);
+  if(!m||m.estado==='Atendido'){showToast('No se puede editar una solicitud ya atendida','ti-x','var(--red)');return;}
+  if(m.modificado){showToast('Esta solicitud ya fue modificada una vez','ti-x','var(--red)');return;}
+  editingId=id;
+  document.getElementById('editTipo').value=m.tipo;
+  document.getElementById('editCant').value=m.cant;
+  document.getElementById('editMat').value=m.mat;
+  document.getElementById('editDesc').value=m.desc;
+  document.getElementById('editBusc').value=m.desc;
+  document.getElementById('modalEditar').style.display='flex';
+}
+function confirmarEditar(){
+  const m=DB.movimientos.find(x=>x.id===editingId);
+  const mat=document.getElementById('editMat').value.trim();
+  const desc=document.getElementById('editDesc').value.trim();
+  const cant=parseInt(document.getElementById('editCant').value);
+  const tipo=document.getElementById('editTipo').value;
+  if(!mat||!desc||!cant||cant<1){showToast('Completa todos los campos','ti-alert-circle','var(--red)');return;}
+  m.tipo=tipo; m.mat=mat; m.desc=desc; m.cant=cant;
+  m.modificado=true; m.fechaModificacion=now();
+  closeModal('modalEditar');
+  renderMisSolicitudes();
+  renderBadgePend();
+  showToast('Solicitud modificada correctamente','ti-edit','var(--blue)');
+}
+
+// ═══════════════════════════════════════════
+// MODAL RESET CONTRASEÑA
+// ═══════════════════════════════════════════
+function abrirModalReset(u){
+  resetUser=u;
+  document.getElementById('resetUserLabel').textContent=DB.users[u]?.nombre||u;
+  document.getElementById('resetNewPass').value='';
+  document.getElementById('resetConfPass').value='';
+  document.getElementById('modalReset').style.display='flex';
+}
+function confirmarReset(){
+  const p1=document.getElementById('resetNewPass').value;
+  const p2=document.getElementById('resetConfPass').value;
+  if(p1.length<4){showToast('Mínimo 4 caracteres','ti-alert-circle','var(--red)');return;}
+  if(p1!==p2){showToast('Las contraseñas no coinciden','ti-alert-circle','var(--red)');return;}
+  DB.users[resetUser].pass=p1;
+  closeModal('modalReset');
+  showToast(`Contraseña de "${resetUser}" actualizada`,'ti-lock','var(--yellow)');
+}
+
+// ═══════════════════════════════════════════
+// CLOSE MODAL
+// ═══════════════════════════════════════════
+function closeModal(id){
+  document.getElementById(id).style.display='none';
+  pendingId=null; editingId=null; resetUser=null;
+}
+['modalAtender','modalEditar','modalReset'].forEach(id=>{
+  document.getElementById(id).addEventListener('click',e=>{if(e.target===document.getElementById(id)) closeModal(id);});
+});
+
+// ═══════════════════════════════════════════
+// BADGE PENDIENTES
+// ═══════════════════════════════════════════
+function renderBadgePend(){
+  const pend=DB.movimientos.filter(m=>m.estado==='Pendiente').length;
+  const b=document.getElementById('badgePend');
+  if(pend>0){b.textContent=pend;b.style.display='';}else{b.style.display='none';}
+}
+
+// ═══════════════════════════════════════════
+// SOLICITUDES ADMIN
+// ═══════════════════════════════════════════
+function estadoPill(e){
+  return e==='Atendido'
+    ?`<span class="pill pill-green">Atendido</span>`
+    :`<span class="pill pill-yellow">Pendiente</span>`;
+}
+function renderSolicitudesAdmin(){
+  const filtro=document.getElementById('filtroEstado')?.value||'';
+  const mv=filtro?DB.movimientos.filter(m=>m.estado===filtro):DB.movimientos;
+  document.getElementById('tbodySolAdmin').innerHTML=mv.length
+    ?mv.map(m=>`<tr>
+        <td style="font-family:var(--mono);font-size:12px;color:var(--muted)">#${m.id}</td>
+        <td>${DB.users[m.usuario]?.nombre||m.usuario}</td>
+        <td><span class="pill ${m.tipo==='Pedido'?'pill-blue':'pill-orange'}">${m.tipo}</span></td>
+        <td style="font-family:var(--mono);font-size:12px">${m.mat}</td>
+        <td>${m.desc}</td>
+        <td>${m.cant}</td>
+        <td>${estadoPill(m.estado)}</td>
+        <td class="tl-small">
+          <div>📝 <span>${m.fechaRegistro}</span></div>
+          ${m.fechaModificacion?`<div>✏️ <span>${m.fechaModificacion}</span></div>`:''}
+          ${m.fechaAtencion?`<div>✅ <span>${m.fechaAtencion}</span></div>`:''}
+        </td>
+        <td>
+          ${m.estado==='Pendiente'
+            ?`<button class="btn-check" onclick="abrirModalAtender(${m.id})" style="white-space:nowrap"><i class="ti ti-circle-check"></i> Atender</button>`
+            :`<span style="font-size:11px;color:var(--muted)">Atendido</span>`}
+        </td>
+      </tr>`).join('')
+    :'<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:24px">Sin solicitudes</td></tr>';
+  renderBadgePend();
+}
+
+// ═══════════════════════════════════════════
+// HISTORIAL
+// ═══════════════════════════════════════════
+function renderHistorial(){
+  document.getElementById('tbodyHist').innerHTML=DB.movimientos.length
+    ?DB.movimientos.map(m=>`<tr>
+        <td style="font-family:var(--mono);font-size:12px;color:var(--muted)">#${m.id}</td>
+        <td>${DB.users[m.usuario]?.nombre||m.usuario}</td>
+        <td><span class="pill ${m.tipo==='Pedido'?'pill-blue':'pill-orange'}">${m.tipo}</span></td>
+        <td style="font-family:var(--mono);font-size:12px">${m.mat}</td>
+        <td>${m.desc}</td>
+        <td>${m.cant}</td>
+        <td>${estadoPill(m.estado)}</td>
+        <td class="tl-small">
+          <div style="display:flex;align-items:center;gap:5px"><span class="sol-tl-dot blue"></span>Registro: <span style="color:var(--text)">${m.fechaRegistro}</span></div>
+          ${m.fechaModificacion?`<div style="display:flex;align-items:center;gap:5px"><span class="sol-tl-dot yellow"></span>Modificado: <span style="color:var(--text)">${m.fechaModificacion}</span></div>`:''}
+          ${m.fechaAtencion?`<div style="display:flex;align-items:center;gap:5px"><span class="sol-tl-dot green"></span>Atendido: <span style="color:var(--text)">${m.fechaAtencion}</span></div>`:''}
+        </td>
+      </tr>`).join('')
+    :'<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px">Sin registros</td></tr>';
+}
+
+// ═══════════════════════════════════════════
+// INVENTARIO
+// ═══════════════════════════════════════════
+function addInv(){
+  const mat=document.getElementById('newMat').value.trim();
+  const desc=document.getElementById('newDesc').value.trim();
+  if(!mat||!desc){showToast('Completa los campos','ti-alert-circle','var(--red)');return;}
+  if(DB.catalogo.find(i=>i.Matricula===mat)){showToast('La matrícula ya existe','ti-alert-circle','var(--red)');return;}
+  DB.catalogo.push({Matricula:mat,Descripcion:desc});
+  clearForm(['newMat','newDesc']);
+  renderInv();
+  showToast('Ítem añadido al catálogo');
+}
+function renderInv(){
+  document.getElementById('tbodyInv').innerHTML=DB.catalogo.length
+    ?DB.catalogo.map((item,i)=>`<tr>
+        <td style="font-family:var(--mono);font-size:12px">${item.Matricula}</td>
+        <td>${item.Descripcion}</td>
+        <td><button class="btn-danger" onclick="delInv(${i})"><i class="ti ti-trash"></i></button></td>
+      </tr>`).join('')
+    :'<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:20px">Sin ítems</td></tr>';
+}
+function delInv(i){
+  if(!confirm('¿Eliminar este ítem?'))return;
+  DB.catalogo.splice(i,1);renderInv();showToast('Ítem eliminado','ti-trash','var(--red)');
+}
+
+// ═══════════════════════════════════════════
+// MIS SOLICITUDES (operador)
+// ═══════════════════════════════════════════
+function renderMisSolicitudes(){
+  const mis=DB.movimientos.filter(m=>m.usuario===SESSION.user);
+  const pend=mis.filter(m=>m.estado==='Pendiente').length;
+  const aten=mis.filter(m=>m.estado==='Atendido').length;
+  document.getElementById('opTotal').textContent=mis.length;
+  document.getElementById('opPend').textContent=pend;
+  document.getElementById('opAten').textContent=aten;
+  const lista=document.getElementById('listaMisSol');
+  if(!mis.length){
+    lista.innerHTML=`<div class="empty-state"><i class="ti ti-clipboard-list"></i><p>Aún no tienes solicitudes registradas.</p></div>`;return;
+  }
+  lista.innerHTML=[...mis].reverse().map(m=>{
+    const isAten=m.estado==='Atendido';
+    const iconCol=m.tipo==='Pedido'?'rgba(74,144,217,.18)':'rgba(232,160,32,.18)';
+    const iconCl=m.tipo==='Pedido'?'var(--blue)':'var(--accent)';
+    const icon=m.tipo==='Pedido'?'ti-truck':'ti-arrow-back-up';
+    const canEdit=!isAten&&!m.modificado;
+    const editBadge=m.modificado
+      ?`<span class="edit-once-badge used"><i class="ti ti-lock" style="font-size:10px"></i> Editado</span>`
+      :(!isAten?`<span class="edit-once-badge"><i class="ti ti-pencil" style="font-size:10px"></i> 1 edición disp.</span>`:'');
+    return `<div class="sol-card">
+      <div class="sol-card-top">
+        <div class="sol-icon" style="background:${iconCol};color:${iconCl}"><i class="ti ${icon}"></i></div>
+        <div class="sol-body">
+          <div class="sol-desc">${m.desc}</div>
+          <div class="sol-mat">${m.mat} &nbsp;·&nbsp; Cant: <b style="color:var(--text)">${m.cant}</b> &nbsp;·&nbsp; <span class="pill ${m.tipo==='Pedido'?'pill-blue':'pill-orange'}" style="font-size:10px">${m.tipo}</span></div>
+        </div>
+        <div class="sol-estado">
+          ${estadoPill(m.estado)}
+          ${editBadge}
+        </div>
+      </div>
+      <div class="sol-timeline">
+        <div class="sol-tl-item"><span class="sol-tl-dot blue"></span>Registrado: ${m.fechaRegistro}</div>
+        ${m.fechaModificacion?`<div class="sol-tl-item"><span class="sol-tl-dot yellow"></span>Modificado: ${m.fechaModificacion}</div>`:''}
+        ${m.fechaAtencion?`<div class="sol-tl-item"><span class="sol-tl-dot green"></span>Atendido: ${m.fechaAtencion}</div>`:''}
+      </div>
+      ${canEdit?`<div class="sol-actions"><button class="btn-edit" onclick="abrirModalEditar(${m.id})"><i class="ti ti-edit"></i> Modificar</button></div>`:''}
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════
+// GESTIÓN USUARIOS
+// ═══════════════════════════════════════════
+function crearUsuario(){
+  const u=document.getElementById('nuUser').value.trim().toLowerCase();
+  const p=document.getElementById('nuPass').value;
+  const r=document.getElementById('nuRol').value;
+  const n=document.getElementById('nuNombre').value.trim();
+  if(!u||!p||!n){showToast('Completa todos los campos','ti-alert-circle','var(--red)');return;}
+  if(p.length<4){showToast('Contraseña: mínimo 4 caracteres','ti-alert-circle','var(--red)');return;}
+  if(DB.users[u]){showToast('El usuario ya existe','ti-alert-circle','var(--red)');return;}
+  DB.users[u]={pass:p,rol:r,nombre:n,creado:now()};
+  clearForm(['nuUser','nuPass','nuNombre']);
+  renderUsuarios();
+  showToast(`Usuario "${u}" creado`,'ti-user-plus');
+}
+function renderUsuarios(){
+  const rows=Object.entries(DB.users).map(([u,d])=>{
+    const cnt=DB.movimientos.filter(m=>m.usuario===u).length;
+    const isAdmin=u==='admin';
+    return `<tr>
+      <td style="font-family:var(--mono);font-size:12px">${u}</td>
+      <td>${d.nombre}</td>
+      <td><span class="pill ${d.rol==='admin'?'pill-purple':'pill-blue'}">${d.rol==='admin'?'Admin':'Operador'}</span></td>
+      <td>${cnt}</td>
+      <td style="font-size:12px;color:var(--muted)">${d.creado||'—'}</td>
+      <td style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn-warn" onclick="abrirModalReset('${u}')"><i class="ti ti-lock-open"></i> Reset</button>
+        ${!isAdmin?`<button class="btn-danger" onclick="eliminarUsuario('${u}')"><i class="ti ti-trash"></i></button>`:''}
+      </td>
+    </tr>`;
+  }).join('');
+  document.getElementById('tbodyUsuarios').innerHTML=rows;
+}
+function eliminarUsuario(u){
+  if(!confirm(`¿Eliminar al usuario "${u}"? Sus solicitudes se conservarán.`))return;
+  delete DB.users[u];
+  renderUsuarios();
+  showToast(`Usuario "${u}" eliminado`,'ti-trash','var(--red)');
+}
+
+// ═══════════════════════════════════════════
+// DASHBOARD CHARTS
+// ═══════════════════════════════════════════
+Chart.defaults.font.family="'DM Sans',sans-serif";
+Chart.defaults.font.size=12;
+Chart.defaults.color='#7a7d8a';
+const TT={backgroundColor:'#1e2330',borderColor:'rgba(255,255,255,0.1)',borderWidth:1,titleColor:'#e8e6df',bodyColor:'#7a7d8a',padding:10};
+const SC={x:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#7a7d8a'}},y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#7a7d8a',stepSize:1}}};
+
+function buildChart(id,type,data,extra={}){
+  if(charts[id]) charts[id].destroy();
+  const ctx=document.getElementById(id).getContext('2d');
+  charts[id]=new Chart(ctx,{type,data,options:{responsive:true,maintainAspectRatio:false,animation:{duration:500,easing:'easeOutQuart'},plugins:{tooltip:TT,legend:{display:false},...(extra.plugins||{})},scales:extra.scales||{},cutout:extra.cutout}});
+}
+
+function renderDashboard(){
+  const mv=DB.movimientos;
+  const pend=mv.filter(m=>m.estado==='Pendiente').length;
+  const aten=mv.filter(m=>m.estado==='Atendido').length;
+  const users=[...new Set(mv.map(m=>m.usuario))].length||Object.keys(DB.users).length;
+  document.getElementById('mTotal').textContent=mv.length;
+  document.getElementById('mPend').textContent=pend;
+  document.getElementById('mAten').textContent=aten;
+  document.getElementById('mUsersD').textContent=users;
+  const uCount={};
+  mv.forEach(m=>{const k=DB.users[m.usuario]?.nombre||m.usuario;uCount[k]=(uCount[k]||0)+1;});
+  buildChart('chartUsuarios','bar',{labels:Object.keys(uCount),datasets:[{label:'Solicitudes',data:Object.values(uCount),backgroundColor:'rgba(232,160,32,0.7)',borderColor:'#e8a020',borderWidth:1,borderRadius:5}]},{scales:SC});
+  const ped=mv.filter(m=>m.tipo==='Pedido').length;
+  const dev=mv.filter(m=>m.tipo==='Devolución').length;
+  buildChart('chartTipos','doughnut',{labels:['Pedidos','Devoluciones'],datasets:[{data:[ped||0,dev||0],backgroundColor:['rgba(74,144,217,0.8)','rgba(232,160,32,0.8)'],borderColor:['#4a90d9','#e8a020'],borderWidth:1,hoverOffset:6}]},{cutout:'65%',plugins:{legend:{display:true,position:'bottom',labels:{padding:14,boxWidth:12}}}});
+  buildChart('chartEstados','doughnut',{labels:['Pendientes','Atendidas'],datasets:[{data:[pend||0,aten||0],backgroundColor:['rgba(240,192,64,0.8)','rgba(62,201,126,0.8)'],borderColor:['#f0c040','#3ec97e'],borderWidth:1,hoverOffset:6}]},{cutout:'65%',plugins:{legend:{display:true,position:'bottom',labels:{padding:14,boxWidth:12}}}});
+  const last8=mv.slice(-8);
+  buildChart('chartTendencia','line',{labels:last8.length?last8.map(m=>`#${m.id}`):['—'],datasets:[{label:'Cantidad',data:last8.length?last8.map(m=>m.cant):[0],borderColor:'#3ec97e',backgroundColor:'rgba(62,201,126,0.08)',fill:true,tension:0.4,pointBackgroundColor:'#3ec97e',pointRadius:4}]},{scales:SC,plugins:{legend:{display:false}}});
+}
+
+// HELPER
+function esc(s){return s.replace(/'/g,"\\'");}
+</script>
+</body>
+</html>
