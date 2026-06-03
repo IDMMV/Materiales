@@ -3,10 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sistema El Tío TEC</title>
+<title>Sistema Jose Hugo</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 :root{
   --bg:#0f1117;--bg2:#171b24;--bg3:#1e2330;--sidebar:#13161f;
@@ -178,6 +179,8 @@ tr:hover td{background:rgba(255,255,255,0.02)}
 /* TOAST */
 #toast{position:fixed;bottom:28px;right:28px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 20px;font-size:13px;z-index:9999;opacity:0;transform:translateY(10px);transition:opacity .3s,transform .3s;pointer-events:none;display:flex;align-items:center;gap:10px;max-width:340px}
 #toast.show{opacity:1;transform:translateY(0)}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spin{animation:spin .8s linear infinite;display:inline-block}
 #toast i{font-size:16px;flex-shrink:0}
 </style>
 </head>
@@ -186,7 +189,7 @@ tr:hover td{background:rgba(255,255,255,0.02)}
 <!-- LOGIN -->
 <div id="loginWrap">
   <div class="login-card">
-    <div class="login-logo">EL TÍO TEC</div>
+    <div class="login-logo">JOSE HUGO</div>
     <div class="login-sub">Sistema de gestión de materiales</div>
     <input type="text" id="loginUser" placeholder="Usuario" autocomplete="off">
     <input type="password" id="loginPass" placeholder="Contraseña" onkeydown="if(event.key==='Enter')doLogin()">
@@ -200,7 +203,7 @@ tr:hover td{background:rgba(255,255,255,0.02)}
 <div id="app">
   <nav id="sidebar">
     <div class="sb-brand">
-      <div class="sb-brand-name">EL TÍO TEC</div>
+      <div class="sb-brand-name">JOSE HUGO</div>
       <div class="sb-brand-sub">Gestión de materiales</div>
     </div>
 
@@ -214,6 +217,7 @@ tr:hover td{background:rgba(255,255,255,0.02)}
           <span class="badge" id="badgePend" style="display:none">0</span>
         </div>
         <div class="sb-item" onclick="goTo('nueva-solicitud-admin',this)"><i class="ti ti-file-plus"></i> Nueva solicitud</div>
+        <div class="sb-item" onclick="goTo('mis-solicitudes-admin',this)"><i class="ti ti-clipboard-list"></i> Mis solicitudes</div>
       </div>
       <div class="sb-section">
         <div class="sb-section-label">Gestión</div>
@@ -247,7 +251,22 @@ tr:hover td{background:rgba(255,255,255,0.02)}
   <div id="mainArea">
     <div class="topbar">
       <div class="topbar-title" id="topTitle">Dashboard</div>
-      <div class="topbar-date" id="topDate"></div>
+      <div id="syncStatusBar" style="display:flex;align-items:center;gap:6px;margin-left:auto;margin-right:16px">
+        <i class="ti ti-cloud" style="color:var(--muted);font-size:14px"></i>
+        <span style="color:var(--muted);font-size:12px">Drive no configurado</span>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button onclick="abrirModalConfigDrive()" style="display:flex;align-items:center;gap:7px;padding:7px 14px;background:rgba(232,160,32,0.15);border:1px solid var(--accent);border-radius:8px;color:var(--accent);cursor:pointer;font-family:var(--font);font-size:12px;font-weight:600;transition:background .15s" onmouseover="this.style.background='rgba(232,160,32,0.25)'" onmouseout="this.style.background='rgba(232,160,32,0.15)'">
+          <i class="ti ti-brand-google-drive" style="font-size:16px"></i> Conectar Drive
+        </button>
+        <button onclick="syncFromDrive()" title="Descargar datos desde Drive" style="display:flex;align-items:center;gap:6px;padding:7px 12px;background:none;border:1px solid var(--border);border-radius:8px;color:var(--muted);cursor:pointer;font-family:var(--font);font-size:12px;transition:all .15s" onmouseover="this.style.borderColor='var(--green)';this.style.color='var(--green)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">
+          <i class="ti ti-cloud-download" style="font-size:15px"></i>
+        </button>
+        <button onclick="syncToDrive()" title="Subir datos a Drive" style="display:flex;align-items:center;gap:6px;padding:7px 12px;background:none;border:1px solid var(--border);border-radius:8px;color:var(--muted);cursor:pointer;font-family:var(--font);font-size:12px;transition:all .15s" onmouseover="this.style.borderColor='var(--blue)';this.style.color='var(--blue)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">
+          <i class="ti ti-cloud-upload" style="font-size:15px"></i>
+        </button>
+      </div>
+      <div class="topbar-date" id="topDate" style="margin-left:16px"></div>
     </div>
 
     <!-- ADMIN: DASHBOARD -->
@@ -277,6 +296,7 @@ tr:hover td{background:rgba(255,255,255,0.02)}
             <option value="Pendiente">Pendiente</option>
             <option value="Atendido">Atendido</option>
           </select>
+          <button class="btn-sm" onclick="exportarSolicitudes()" style="margin-left:8px"><i class="ti ti-download" style="font-size:13px;vertical-align:-2px"></i> Exportar</button>
         </div>
         <div style="overflow-x:auto">
         <table>
@@ -314,7 +334,7 @@ tr:hover td{background:rgba(255,255,255,0.02)}
     <!-- ADMIN: INVENTARIO -->
     <div class="page" id="page-inventario">
       <div class="table-card">
-        <div class="table-head"><i class="ti ti-box" style="color:var(--accent);font-size:18px"></i><span class="table-head-title">Añadir al catálogo</span></div>
+        <div class="table-head"><i class="ti ti-box" style="color:var(--accent);font-size:18px"></i><span class="table-head-title">Añadir ítem manualmente</span></div>
         <div style="padding:20px">
           <div class="form-grid">
             <div class="form-group"><label>Matrícula</label><input type="text" id="newMat" placeholder="Ej. 3004042"></div>
@@ -323,8 +343,39 @@ tr:hover td{background:rgba(255,255,255,0.02)}
           <button class="btn-primary" style="width:auto;padding:11px 28px" onclick="addInv()"><i class="ti ti-plus" style="font-size:14px;vertical-align:-2px"></i> Añadir ítem</button>
         </div>
       </div>
+      <!-- IMPORTAR EXCEL -->
       <div class="table-card">
-        <div class="table-head"><i class="ti ti-list" style="color:var(--accent);font-size:18px"></i><span class="table-head-title">Catálogo de materiales</span></div>
+        <div class="table-head">
+          <i class="ti ti-file-spreadsheet" style="color:var(--green);font-size:18px"></i>
+          <span class="table-head-title">Importar inventario desde Excel</span>
+        </div>
+        <div style="padding:20px">
+          <p style="font-size:12px;color:var(--muted);margin-bottom:14px">El archivo Excel debe tener dos columnas: <b style="color:var(--text)">Matricula</b> y <b style="color:var(--text)">Descripcion</b> (primera fila = encabezados). Al importar puedes reemplazar el catálogo completo o añadir los nuevos ítems.</p>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+            <label style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;background:var(--bg3);border:1px dashed var(--border);border-radius:var(--radius);cursor:pointer;font-size:13px;color:var(--muted);transition:border-color .2s" onmouseover="this.style.borderColor='var(--green)'" onmouseout="this.style.borderColor='var(--border)'">
+              <i class="ti ti-upload" style="font-size:16px;color:var(--green)"></i> Seleccionar archivo .xlsx
+              <input type="file" id="fileInv" accept=".xlsx,.xls,.csv" style="display:none" onchange="importarExcel(this)">
+            </label>
+            <button class="btn-sm" style="background:rgba(62,201,126,.15);color:var(--green);border:1px solid rgba(62,201,126,.3)" onclick="descargarPlantilla()">
+              <i class="ti ti-download" style="font-size:13px;vertical-align:-2px"></i> Descargar plantilla
+            </button>
+          </div>
+          <div id="importPreview" style="margin-top:14px;display:none">
+            <p style="font-size:12px;color:var(--muted);margin-bottom:10px">Vista previa — <span id="importCount">0</span> ítems detectados</p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn-confirm" onclick="confirmarImport('reemplazar')"><i class="ti ti-refresh"></i> Reemplazar catálogo</button>
+              <button class="btn-sm" style="background:rgba(74,144,217,.15);color:var(--blue);border:1px solid rgba(74,144,217,.3)" onclick="confirmarImport('agregar')"><i class="ti ti-plus"></i> Agregar al catálogo actual</button>
+              <button class="btn-ghost" onclick="cancelarImport()">Cancelar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="table-card">
+        <div class="table-head">
+          <i class="ti ti-list" style="color:var(--accent);font-size:18px"></i>
+          <span class="table-head-title">Catálogo de materiales</span>
+          <button class="btn-sm" style="margin-left:auto" onclick="exportarCatalogo()"><i class="ti ti-download" style="font-size:13px;vertical-align:-2px"></i> Exportar</button>
+        </div>
         <table><thead><tr><th>Matrícula</th><th>Descripción</th><th>Acciones</th></tr></thead><tbody id="tbodyInv"></tbody></table>
       </div>
     </div>
@@ -332,7 +383,11 @@ tr:hover td{background:rgba(255,255,255,0.02)}
     <!-- ADMIN: HISTORIAL -->
     <div class="page" id="page-historial">
       <div class="table-card">
-        <div class="table-head"><i class="ti ti-history" style="color:var(--accent);font-size:18px"></i><span class="table-head-title">Historial completo</span></div>
+        <div class="table-head">
+          <i class="ti ti-history" style="color:var(--accent);font-size:18px"></i>
+          <span class="table-head-title">Historial completo</span>
+          <button class="btn-sm" onclick="exportarSolicitudes()" style="margin-left:auto"><i class="ti ti-download" style="font-size:13px;vertical-align:-2px"></i> Exportar</button>
+        </div>
         <div style="overflow-x:auto">
         <table><thead><tr><th>#</th><th>Usuario</th><th>Tipo</th><th>Matrícula</th><th>Descripción</th><th>Cant.</th><th>Estado</th><th>Línea de tiempo</th></tr></thead><tbody id="tbodyHist"></tbody></table>
         </div>
@@ -354,8 +409,27 @@ tr:hover td{background:rgba(255,255,255,0.02)}
         </div>
       </div>
       <div class="table-card">
-        <div class="table-head"><i class="ti ti-users" style="color:var(--accent);font-size:18px"></i><span class="table-head-title">Usuarios del sistema</span></div>
+        <div class="table-head"><i class="ti ti-users" style="color:var(--accent);font-size:18px"></i><span class="table-head-title">Usuarios del sistema</span>
+          <span id="storageInfo" style="margin-left:auto;font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px"><i class="ti ti-device-floppy"></i> Guardado en este navegador</span>
+        </div>
         <table><thead><tr><th>Usuario</th><th>Nombre</th><th>Rol</th><th>Solicitudes</th><th>Registro</th><th>Acciones</th></tr></thead><tbody id="tbodyUsuarios"></tbody></table>
+        <div style="padding:14px 20px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px">
+          <span style="font-size:12px;color:var(--muted)"><i class="ti ti-alert-triangle" style="color:var(--yellow)"></i> Zona de riesgo:</span>
+          <button class="btn-danger" onclick="limpiarDatos()" style="font-size:12px;padding:5px 14px"><i class="ti ti-trash"></i> Borrar todos los datos</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ADMIN: MIS SOLICITUDES PROPIAS -->
+    <div class="page" id="page-mis-solicitudes-admin">
+      <div class="metrics-grid" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr))">
+        <div class="metric-card" style="--c:var(--accent)"><div class="metric-label">Mis solicitudes</div><div class="metric-val" id="aTotal">0</div><i class="ti ti-list metric-icon"></i></div>
+        <div class="metric-card" style="--c:var(--yellow)"><div class="metric-label">Pendientes</div><div class="metric-val" id="aPend">0</div><i class="ti ti-clock metric-icon"></i></div>
+        <div class="metric-card" style="--c:var(--green)"><div class="metric-label">Atendidas</div><div class="metric-val" id="aAten">0</div><i class="ti ti-circle-check metric-icon"></i></div>
+      </div>
+      <div class="table-card">
+        <div class="table-head"><i class="ti ti-clipboard-list" style="color:var(--accent);font-size:18px"></i><span class="table-head-title">Mis solicitudes registradas</span></div>
+        <div id="listaMisSolAdmin" style="padding:8px 12px"></div>
       </div>
     </div>
 
@@ -439,19 +513,214 @@ tr:hover td{background:rgba(255,255,255,0.02)}
   </div>
 </div>
 
+<!-- MODAL: CONFIGURAR DRIVE -->
+<div class="modal-overlay" id="modalConfigDrive" style="display:none">
+  <div class="modal">
+    <div class="modal-title"><i class="ti ti-brand-google-drive" style="color:var(--green)"></i> Conectar con Google Drive</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.6">
+      Pega aquí la URL de tu Apps Script publicado como Web App.<br>
+      Debe verse así: <code style="font-size:11px;color:var(--accent);background:var(--bg3);padding:2px 6px;border-radius:4px">https://script.google.com/macros/s/XXXXX/exec</code>
+    </p>
+    <div class="form-group" style="margin-bottom:16px">
+      <label>URL del Apps Script</label>
+      <input type="text" id="gasUrlInput" placeholder="https://script.google.com/macros/s/.../exec">
+    </div>
+    <div style="background:var(--bg3);border-radius:8px;padding:12px 14px;font-size:12px;color:var(--muted);line-height:1.7;margin-bottom:4px">
+      <b style="color:var(--text)">Pasos para obtener la URL:</b><br>
+      1. Ve a <span style="color:var(--accent)">script.google.com</span> → pega el código del servidor<br>
+      2. Implementar → Nueva implementación → Aplicación web<br>
+      3. Ejecutar como: <b style="color:var(--text)">Yo</b> · Acceso: <b style="color:var(--text)">Cualquier persona</b><br>
+      4. Copia la URL y pégala aquí
+    </div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeModal('modalConfigDrive')">Cancelar</button>
+      <button class="btn-confirm" onclick="guardarConfigDrive()"><i class="ti ti-check"></i> Guardar y conectar</button>
+    </div>
+  </div>
+</div>
+
 <!-- TOAST -->
 <div id="toast"><i class="ti ti-check"></i><span id="toastMsg"></span></div>
 
 <script>
 // ═══════════════════════════════════════════
+// GOOGLE DRIVE CONFIG
+// ── Pega aquí la URL de tu Apps Script ──
+// ═══════════════════════════════════════════
+let GAS_URL = localStorage.getItem('josehugo_gas_url') || '';
+
+// ── Auto-sync silencioso (no muestra toast, solo actualiza el estado) ──
+async function autoSync() {
+  if (!GAS_URL) return;
+  try {
+    setSyncStatus('syncing','Guardando en Drive...');
+    const solicitudesArr = DB.movimientos.map(m => ({
+      ID: m.id, Usuario: m.usuario,
+      Nombre: DB.users[m.usuario]?.nombre || m.usuario,
+      Tipo: m.tipo, Matricula: m.mat, Descripcion: m.desc,
+      Cantidad: m.cant, Estado: m.estado,
+      Fecha_Registro: m.fechaRegistro||'',
+      Fecha_Modificacion: m.fechaModificacion||'',
+      Fecha_Atencion: m.fechaAtencion||'',
+      Modificado: m.modificado ? 'SI' : 'NO',
+    }));
+    const catalogoArr = DB.catalogo.map(c => ({ Matricula: c.Matricula, Descripcion: c.Descripcion }));
+    const usuariosArr = Object.entries(DB.users).map(([u, d]) => ({ Usuario: u, Nombre: d.nombre, Rol: d.rol, Creado: d.creado||'' }));
+    await gasPost('syncAll', { data: { solicitudes: solicitudesArr, catalogo: catalogoArr, usuarios: usuariosArr }});
+    setSyncStatus('ok', 'Drive guardado · ' + new Date().toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'}));
+  } catch(e) {
+    setSyncStatus('error', 'Error Drive: ' + e.message);
+  }
+}
+
+// Auto-guardado cada 3 minutos
+setInterval(() => { if (GAS_URL && SESSION.user) autoSync(); }, 3 * 60 * 1000);
+
+// ── Estado de sincronización ──
+let syncStatus = 'idle'; // idle | syncing | ok | error
+
+function setSyncStatus(s, msg) {
+  syncStatus = s;
+  const el = document.getElementById('syncStatusBar');
+  if (!el) return;
+  const icons = { idle:'ti-cloud', syncing:'ti-loader-2 spin', ok:'ti-cloud-check', error:'ti-cloud-x' };
+  const colors = { idle:'var(--muted)', syncing:'var(--blue)', ok:'var(--green)', error:'var(--red)' };
+  el.innerHTML = `<i class="ti ${icons[s]}" style="color:${colors[s]};font-size:14px"></i> <span style="color:${colors[s]};font-size:12px">${msg}</span>`;
+}
+
+// ── Llamada genérica al script ──
+async function gasGet(action) {
+  if (!GAS_URL) return null;
+  const r = await fetch(`${GAS_URL}?action=${action}`);
+  const j = await r.json();
+  if (!j.ok) throw new Error(j.error || 'Error en el servidor');
+  return j.data;
+}
+async function gasPost(action, payload) {
+  if (!GAS_URL) return null;
+  const r = await fetch(GAS_URL, {
+    method:'POST', body: JSON.stringify({ action, ...payload }),
+    headers:{'Content-Type':'application/json'},
+    redirect:'follow',
+  });
+  const j = await r.json();
+  if (!j.ok) throw new Error(j.error || 'Error en el servidor');
+  return j.data;
+}
+
+// ── Sincronizar todo HACIA Drive (subir) ──
+async function syncToDrive() {
+  if (!GAS_URL) { abrirModalConfigDrive(); return; }
+  setSyncStatus('syncing','Subiendo a Drive...');
+  try {
+    const solicitudesArr = DB.movimientos.map(m => ({
+      ID: m.id, Usuario: m.usuario,
+      Nombre: DB.users[m.usuario]?.nombre || m.usuario,
+      Tipo: m.tipo, Matricula: m.mat, Descripcion: m.desc,
+      Cantidad: m.cant, Estado: m.estado,
+      Fecha_Registro: m.fechaRegistro||'',
+      Fecha_Modificacion: m.fechaModificacion||'',
+      Fecha_Atencion: m.fechaAtencion||'',
+      Modificado: m.modificado ? 'SI' : 'NO',
+    }));
+    const catalogoArr = DB.catalogo.map(c => ({
+      Matricula: c.Matricula, Descripcion: c.Descripcion,
+    }));
+    const usuariosArr = Object.entries(DB.users).map(([u, d]) => ({
+      Usuario: u, Nombre: d.nombre, Rol: d.rol, Creado: d.creado||'',
+    }));
+    await gasPost('syncAll', { data: {
+      solicitudes: solicitudesArr,
+      catalogo:    catalogoArr,
+      usuarios:    usuariosArr,
+    }});
+    setSyncStatus('ok', 'Drive actualizado · ' + new Date().toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'}));
+    showToast('Datos subidos a Google Drive','ti-cloud-check','var(--green)');
+  } catch(e) {
+    setSyncStatus('error','Error al subir: ' + e.message);
+    showToast('Error Drive: ' + e.message,'ti-cloud-x','var(--red)');
+  }
+}
+
+// ── Cargar TODO desde Drive (bajar) ──
+async function syncFromDrive() {
+  if (!GAS_URL) { abrirModalConfigDrive(); return; }
+  if (!confirm('¿Reemplazar los datos locales con los de Google Drive? Los datos locales no guardados se perderán.')) return;
+  setSyncStatus('syncing','Descargando desde Drive...');
+  try {
+    const data = await gasGet('getAll');
+    // Solicitudes
+    if (data.solicitudes?.length) {
+      DB.movimientos = data.solicitudes.map(s => ({
+        id: Number(s.ID)||s.ID,
+        usuario: s.Usuario, tipo: s.Tipo,
+        mat: s.Matricula, desc: s.Descripcion,
+        cant: Number(s.Cantidad)||0,
+        estado: s.Estado||'Pendiente',
+        fechaRegistro: s.Fecha_Registro||'',
+        fechaModificacion: s.Fecha_Modificacion||'',
+        fechaAtencion: s.Fecha_Atencion||'',
+        modificado: s.Modificado==='SI',
+      }));
+      DB.nextId = Math.max(...DB.movimientos.map(m => Number(m.id)||0), 0) + 1;
+    }
+    // Catálogo
+    if (data.catalogo?.length) {
+      DB.catalogo = data.catalogo.map(c => ({
+        Matricula: c.Matricula, Descripcion: c.Descripcion,
+      }));
+    }
+    // Usuarios (sin contraseñas — se mantienen las locales)
+    if (data.usuarios?.length) {
+      data.usuarios.forEach(u => {
+        if (!DB.users[u.Usuario]) {
+          DB.users[u.Usuario] = { pass:'0000', rol: u.Rol||'operador', nombre: u.Nombre, creado: u.Creado||'' };
+        } else {
+          DB.users[u.Usuario].nombre = u.Nombre;
+          DB.users[u.Usuario].rol    = u.Rol;
+        }
+      });
+    }
+    dbSave();
+    renderInv(); renderUsuarios(); renderBadgePend();
+    if (SESSION.rol==='admin') renderDashboard();
+    else renderMisSolicitudes();
+    setSyncStatus('ok','Datos cargados desde Drive · ' + new Date().toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'}));
+    showToast('Datos descargados desde Drive','ti-cloud-check','var(--green)');
+  } catch(e) {
+    setSyncStatus('error','Error al bajar: ' + e.message);
+    showToast('Error Drive: ' + e.message,'ti-cloud-x','var(--red)');
+  }
+}
+
+// ── Modal configurar URL ──
+function abrirModalConfigDrive() {
+  document.getElementById('gasUrlInput').value = GAS_URL;
+  document.getElementById('modalConfigDrive').style.display = 'flex';
+}
+function guardarConfigDrive() {
+  const url = document.getElementById('gasUrlInput').value.trim();
+  if (!url.startsWith('https://script.google.com/macros/s/')) {
+    showToast('URL inválida. Debe empezar con https://script.google.com/macros/s/','ti-alert-circle','var(--red)');
+    return;
+  }
+  GAS_URL = url;
+  localStorage.setItem('josehugo_gas_url', GAS_URL);
+  closeModal('modalConfigDrive');
+  showToast('URL guardada correctamente','ti-check','var(--green)');
+  setSyncStatus('idle','Drive configurado — listo para sincronizar');
+}
+
+// ═══════════════════════════════════════════
 // DATA
 // ═══════════════════════════════════════════
 function now(){ return new Date().toLocaleString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); }
 
-let DB = {
+// ── DEFAULTS (solo si no hay datos guardados) ──
+const DB_DEFAULT = {
   users:{
-    admin:   {pass:'1234',   rol:'admin',    nombre:'Administrador', creado: now()},
-    operador:{pass:'0000',   rol:'operador', nombre:'Operador Demo',  creado: now()},
+    admin:   {pass:'1234', rol:'admin',    nombre:'Administrador', creado: now()},
+    operador:{pass:'0000', rol:'operador', nombre:'Operador Demo',  creado: now()},
   },
   movimientos:[],
   catalogo:[
@@ -463,7 +732,118 @@ let DB = {
   ],
   nextId:1,
 };
+
+// ── localStorage persistence ──
+function dbLoad(){
+  try{
+    const raw=localStorage.getItem('josehugo_db');
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  return JSON.parse(JSON.stringify(DB_DEFAULT));
+}
+function dbSave(){
+  try{ localStorage.setItem('josehugo_db', JSON.stringify(DB)); }catch(e){}
+}
+
+let DB = dbLoad();
 // {id, usuario, tipo, mat, desc, cant, estado, fechaRegistro, fechaModificacion, fechaAtencion, modificado:bool}
+
+// ── Buffer de importación Excel ──
+let importBuffer = [];
+
+// ── EXCEL IMPORT ──
+function importarExcel(input){
+  const file = input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const wb = XLSX.read(new Uint8Array(e.target.result), {type:'array'});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, {defval:''});
+      // Normalizar columnas (acepta variantes de nombre)
+      importBuffer = rows.map(r => {
+        const mat  = (r['Matricula']||r['Matrícula']||r['matricula']||r['MATRICULA']||'').toString().trim();
+        const desc = (r['Descripcion']||r['Descripción']||r['descripcion']||r['DESCRIPCION']||'').toString().trim();
+        return mat && desc ? {Matricula:mat, Descripcion:desc} : null;
+      }).filter(Boolean);
+      if(!importBuffer.length){
+        showToast('No se encontraron filas válidas. Verifica las columnas Matricula y Descripcion','ti-alert-circle','var(--red)');
+        return;
+      }
+      document.getElementById('importCount').textContent = importBuffer.length;
+      document.getElementById('importPreview').style.display = 'block';
+      showToast(`${importBuffer.length} ítems listos para importar`,'ti-file-spreadsheet','var(--green)');
+    }catch(err){
+      showToast('Error al leer el archivo. Verifica que sea .xlsx o .csv','ti-alert-circle','var(--red)');
+    }
+    input.value=''; // reset input
+  };
+  reader.readAsArrayBuffer(file);
+}
+function confirmarImport(modo){
+  if(!importBuffer.length) return;
+  if(modo==='reemplazar'){
+    DB.catalogo = [...importBuffer];
+    showToast(`Catálogo reemplazado con ${importBuffer.length} ítems`,'ti-refresh','var(--green)');
+  } else {
+    let added=0;
+    importBuffer.forEach(item=>{
+      if(!DB.catalogo.find(c=>c.Matricula===item.Matricula)){
+        DB.catalogo.push(item); added++;
+      }
+    });
+    showToast(`${added} ítems nuevos añadidos al catálogo`,'ti-plus','var(--green)');
+  }
+  importBuffer=[];
+  document.getElementById('importPreview').style.display='none';
+  dbSave();
+  renderInv();
+  autoSync();
+}
+function cancelarImport(){
+  importBuffer=[];
+  document.getElementById('importPreview').style.display='none';
+}
+function descargarPlantilla(){
+  const ws = XLSX.utils.aoa_to_sheet([['Matricula','Descripcion'],['3004042','EJEMPLO DE MATERIAL']]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Catalogo');
+  XLSX.writeFile(wb, 'plantilla_catalogo.xlsx');
+}
+
+// ── EXCEL EXPORT ──
+function exportarCatalogo(){
+  if(!DB.catalogo.length){showToast('El catálogo está vacío','ti-alert-circle','var(--yellow)');return;}
+  const ws = XLSX.utils.json_to_sheet(DB.catalogo.map(i=>({Matricula:i.Matricula, Descripcion:i.Descripcion})));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Catalogo');
+  XLSX.writeFile(wb, `catalogo_${dateStr()}.xlsx`);
+  showToast('Catálogo exportado','ti-download','var(--green)');
+}
+function exportarSolicitudes(){
+  if(!DB.movimientos.length){showToast('Sin solicitudes para exportar','ti-alert-circle','var(--yellow)');return;}
+  const rows = DB.movimientos.map(m=>({
+    ID: m.id,
+    Usuario: DB.users[m.usuario]?.nombre||m.usuario,
+    Tipo: m.tipo,
+    Matricula: m.mat,
+    Descripcion: m.desc,
+    Cantidad: m.cant,
+    Estado: m.estado,
+    Fecha_Registro: m.fechaRegistro||'',
+    Fecha_Modificacion: m.fechaModificacion||'',
+    Fecha_Atencion: m.fechaAtencion||'',
+  }));
+  const ws = XLSX.utils.json_to_sheet(rows);
+  // Ancho de columnas
+  ws['!cols'] = [{wch:5},{wch:18},{wch:12},{wch:12},{wch:30},{wch:8},{wch:12},{wch:18},{wch:18},{wch:18}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Solicitudes');
+  XLSX.writeFile(wb, `solicitudes_${dateStr()}.xlsx`);
+  showToast('Solicitudes exportadas','ti-download','var(--green)');
+}
+function dateStr(){ return new Date().toLocaleDateString('es-PE').replace(/\//g,'-'); }
 
 let SESSION={user:'',rol:''};
 let charts={};
@@ -488,6 +868,8 @@ function doLogin(){
     document.getElementById('loginWrap').style.display='none';
     document.getElementById('app').style.display='flex';
     document.getElementById('topDate').textContent=new Date().toLocaleDateString('es-PE',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+    if(GAS_URL) setSyncStatus('idle','Drive configurado — listo para sincronizar');
+    else setSyncStatus('idle','Drive no configurado');
     setupNav();
   }else{
     document.getElementById('loginErr').style.display='block';
@@ -526,14 +908,14 @@ function setupNav(){
   renderInv();
 }
 
-const pageTitles={'dashboard':'Dashboard','solicitudes-admin':'Solicitudes','nueva-solicitud-admin':'Nueva solicitud','inventario':'Inventario','historial':'Historial','usuarios':'Gestión de usuarios','mis-solicitudes':'Mis solicitudes','nueva-solicitud':'Nueva solicitud'};
+const pageTitles={'dashboard':'Dashboard','solicitudes-admin':'Solicitudes','nueva-solicitud-admin':'Nueva solicitud','mis-solicitudes-admin':'Mis solicitudes','inventario':'Inventario','historial':'Historial','usuarios':'Gestión de usuarios','mis-solicitudes':'Mis solicitudes','nueva-solicitud':'Nueva solicitud'};
 function goTo(pageId,el){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.sb-item').forEach(i=>i.classList.remove('active'));
   document.getElementById('page-'+pageId).classList.add('active');
   el.classList.add('active');
   document.getElementById('topTitle').textContent=pageTitles[pageId]||pageId;
-  const map={'dashboard':renderDashboard,'solicitudes-admin':renderSolicitudesAdmin,'historial':renderHistorial,'mis-solicitudes':renderMisSolicitudes,'inventario':renderInv,'usuarios':renderUsuarios};
+  const map={'dashboard':renderDashboard,'solicitudes-admin':renderSolicitudesAdmin,'historial':renderHistorial,'mis-solicitudes':renderMisSolicitudes,'mis-solicitudes-admin':renderMisSolicitudesAdmin,'inventario':renderInv,'usuarios':renderUsuarios};
   if(map[pageId]) map[pageId]();
 }
 
@@ -621,9 +1003,11 @@ function guardar(){
   if(!mat||!desc||!cant||cant<1){showToast('Completa todos los campos','ti-alert-circle','var(--red)');return;}
   DB.movimientos.push({id:DB.nextId++,usuario:SESSION.user,tipo,mat,desc,cant,estado:'Pendiente',fechaRegistro:now(),fechaModificacion:null,fechaAtencion:null,modificado:false});
   clearForm(['mat','desc','busc','cant']);
+  dbSave();
   showToast('Solicitud enviada correctamente','ti-send','var(--blue)');
   renderBadgePend();
   renderMisSolicitudes();
+  autoSync();
 }
 
 // GUARDAR SOLICITUD (admin)
@@ -635,9 +1019,11 @@ function guardarAdmin(){
   if(!mat||!desc||!cant||cant<1){showToast('Completa todos los campos','ti-alert-circle','var(--red)');return;}
   DB.movimientos.push({id:DB.nextId++,usuario:SESSION.user,tipo,mat,desc,cant,estado:'Pendiente',fechaRegistro:now(),fechaModificacion:null,fechaAtencion:null,modificado:false});
   clearForm(['matAdmin','descAdmin','buscAdmin','cantAdmin']);
+  dbSave();
   showToast('Solicitud registrada','ti-send','var(--blue)');
   renderBadgePend();
   renderDashboard();
+  autoSync();
 }
 
 function clearForm(ids){ ids.forEach(id=>{const el=document.getElementById(id);if(el)el.value='';}); }
@@ -665,7 +1051,9 @@ function confirmarAtender(){
   closeModal('modalAtender');
   renderSolicitudesAdmin();
   renderBadgePend();
+  dbSave();
   showToast('Solicitud marcada como atendida','ti-circle-check','var(--green)');
+  autoSync();
 }
 
 // ═══════════════════════════════════════════
@@ -695,7 +1083,9 @@ function confirmarEditar(){
   closeModal('modalEditar');
   renderMisSolicitudes();
   renderBadgePend();
+  dbSave();
   showToast('Solicitud modificada correctamente','ti-edit','var(--blue)');
+  autoSync();
 }
 
 // ═══════════════════════════════════════════
@@ -715,6 +1105,7 @@ function confirmarReset(){
   if(p1!==p2){showToast('Las contraseñas no coinciden','ti-alert-circle','var(--red)');return;}
   DB.users[resetUser].pass=p1;
   closeModal('modalReset');
+  dbSave();
   showToast(`Contraseña de "${resetUser}" actualizada`,'ti-lock','var(--yellow)');
 }
 
@@ -725,7 +1116,7 @@ function closeModal(id){
   document.getElementById(id).style.display='none';
   pendingId=null; editingId=null; resetUser=null;
 }
-['modalAtender','modalEditar','modalReset'].forEach(id=>{
+['modalAtender','modalEditar','modalReset','modalConfigDrive'].forEach(id=>{
   document.getElementById(id).addEventListener('click',e=>{if(e.target===document.getElementById(id)) closeModal(id);});
 });
 
@@ -806,7 +1197,9 @@ function addInv(){
   DB.catalogo.push({Matricula:mat,Descripcion:desc});
   clearForm(['newMat','newDesc']);
   renderInv();
+  dbSave();
   showToast('Ítem añadido al catálogo');
+  autoSync();
 }
 function renderInv(){
   document.getElementById('tbodyInv').innerHTML=DB.catalogo.length
@@ -819,7 +1212,7 @@ function renderInv(){
 }
 function delInv(i){
   if(!confirm('¿Eliminar este ítem?'))return;
-  DB.catalogo.splice(i,1);renderInv();showToast('Ítem eliminado','ti-trash','var(--red)');
+  DB.catalogo.splice(i,1);renderInv();dbSave();showToast('Ítem eliminado','ti-trash','var(--red)');autoSync();
 }
 
 // ═══════════════════════════════════════════
@@ -868,6 +1261,47 @@ function renderMisSolicitudes(){
 }
 
 // ═══════════════════════════════════════════
+// MIS SOLICITUDES ADMIN (misma vista que operador, admin también puede editar 1 vez)
+// ═══════════════════════════════════════════
+function renderMisSolicitudesAdmin(){
+  const mis=DB.movimientos.filter(m=>m.usuario===SESSION.user);
+  const pend=mis.filter(m=>m.estado==='Pendiente').length;
+  const aten=mis.filter(m=>m.estado==='Atendido').length;
+  document.getElementById('aTotal').textContent=mis.length;
+  document.getElementById('aPend').textContent=pend;
+  document.getElementById('aAten').textContent=aten;
+  const lista=document.getElementById('listaMisSolAdmin');
+  if(!mis.length){
+    lista.innerHTML=`<div class="empty-state"><i class="ti ti-clipboard-list"></i><p>Aún no has registrado solicitudes.</p></div>`;return;
+  }
+  lista.innerHTML=[...mis].reverse().map(m=>{
+    const iconCol=m.tipo==='Pedido'?'rgba(74,144,217,.18)':'rgba(232,160,32,.18)';
+    const iconCl=m.tipo==='Pedido'?'var(--blue)':'var(--accent)';
+    const icon=m.tipo==='Pedido'?'ti-truck':'ti-arrow-back-up';
+    const canEdit=m.estado==='Pendiente'&&!m.modificado;
+    const editBadge=m.modificado
+      ?`<span class="edit-once-badge used"><i class="ti ti-lock" style="font-size:10px"></i> Editado</span>`
+      :(m.estado==='Pendiente'?`<span class="edit-once-badge"><i class="ti ti-pencil" style="font-size:10px"></i> 1 edición disp.</span>`:'');
+    return `<div class="sol-card">
+      <div class="sol-card-top">
+        <div class="sol-icon" style="background:${iconCol};color:${iconCl}"><i class="ti ${icon}"></i></div>
+        <div class="sol-body">
+          <div class="sol-desc">${m.desc}</div>
+          <div class="sol-mat">${m.mat} &nbsp;·&nbsp; Cant: <b style="color:var(--text)">${m.cant}</b> &nbsp;·&nbsp; <span class="pill ${m.tipo==='Pedido'?'pill-blue':'pill-orange'}" style="font-size:10px">${m.tipo}</span></div>
+        </div>
+        <div class="sol-estado">${estadoPill(m.estado)}${editBadge}</div>
+      </div>
+      <div class="sol-timeline">
+        <div class="sol-tl-item"><span class="sol-tl-dot blue"></span>Registrado: ${m.fechaRegistro}</div>
+        ${m.fechaModificacion?`<div class="sol-tl-item"><span class="sol-tl-dot yellow"></span>Modificado: ${m.fechaModificacion}</div>`:''}
+        ${m.fechaAtencion?`<div class="sol-tl-item"><span class="sol-tl-dot green"></span>Atendido: ${m.fechaAtencion}</div>`:''}
+      </div>
+      ${canEdit?`<div class="sol-actions"><button class="btn-edit" onclick="abrirModalEditar(${m.id},'admin')"><i class="ti ti-edit"></i> Modificar</button></div>`:''}
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════
 // GESTIÓN USUARIOS
 // ═══════════════════════════════════════════
 function crearUsuario(){
@@ -881,7 +1315,9 @@ function crearUsuario(){
   DB.users[u]={pass:p,rol:r,nombre:n,creado:now()};
   clearForm(['nuUser','nuPass','nuNombre']);
   renderUsuarios();
+  dbSave();
   showToast(`Usuario "${u}" creado`,'ti-user-plus');
+  autoSync();
 }
 function renderUsuarios(){
   const rows=Object.entries(DB.users).map(([u,d])=>{
@@ -905,7 +1341,9 @@ function eliminarUsuario(u){
   if(!confirm(`¿Eliminar al usuario "${u}"? Sus solicitudes se conservarán.`))return;
   delete DB.users[u];
   renderUsuarios();
+  dbSave();
   showToast(`Usuario "${u}" eliminado`,'ti-trash','var(--red)');
+  autoSync();
 }
 
 // ═══════════════════════════════════════════
@@ -945,6 +1383,11 @@ function renderDashboard(){
 
 // HELPER
 function esc(s){return s.replace(/'/g,"\\'");}
+function limpiarDatos(){
+  if(!confirm('⚠️ Esto borrará TODOS los datos (usuarios, solicitudes, catálogo). ¿Seguro?'))return;
+  localStorage.removeItem('josehugo_db');
+  location.reload();
+}
 </script>
 </body>
 </html>
